@@ -28,7 +28,7 @@ using namespace std;
 #define TESTING
 
 /* Constructor */
-PCR::PCR(int N_tmp) {
+PCR::PCR(int N_tmp, int S_tmp) {
 	if (N_tmp > CHUNK_MAX*CR_BUFF_MAX) {
 		cout << "Error: system dimension exceeds allowance of " << CHUNK_MAX*CR_BUFF_MAX;
 		cout << " equations!" << endl;
@@ -36,10 +36,11 @@ PCR::PCR(int N_tmp) {
 	}
 
 	N = N_tmp;
-	check_return(cudaMalloc((float**) &A1, N*sizeof(float)));
-	check_return(cudaMalloc((float**) &A2, N*sizeof(float)));
-	check_return(cudaMalloc((float**) &A3, N*sizeof(float)));
-	check_return(cudaMalloc((float**) &b, N*sizeof(float)));
+	S = S_tmp;
+	check_return(cudaMalloc((float**) &A1, S*N*sizeof(float)));
+	check_return(cudaMalloc((float**) &A2, S*N*sizeof(float)));
+	check_return(cudaMalloc((float**) &A3, S*N*sizeof(float)));
+	check_return(cudaMalloc((float**) &b, S*N*sizeof(float)));
 }
 
 /* Destructor */
@@ -60,9 +61,9 @@ __host__ void PCR::PCR_solve(float* A1_tmp, float* A2_tmp, float* A3_tmp,
 
 	/* Launch solver here */
 
-	PCR_solver<<<1, CHUNK_MAX>>>(A1, A2, A3, b, N);
+	PCR_solver<<<S, CHUNK_MAX>>>(A1, A2, A3, b, N);
 
-	check_return(cudaMemcpy(x_tmp, b, N*sizeof(float), cudaMemcpyDeviceToHost));
+	check_return(cudaMemcpy(x_tmp, b, S*N*sizeof(float), cudaMemcpyDeviceToHost));
 }
 
 /* Private Methods */
@@ -70,19 +71,19 @@ __host__ void PCR::PCR_solve(float* A1_tmp, float* A2_tmp, float* A3_tmp,
 /* Allocates device memory */
 __host__ void PCR::PCR_init(float* A1_tmp, float* A2_tmp, float* A3_tmp,
 		float* b_tmp) {
-	check_return(cudaMemcpy(A1, A1_tmp, N*sizeof(float), cudaMemcpyHostToDevice));
-	check_return(cudaMemcpy(A2, A2_tmp, N*sizeof(float), cudaMemcpyHostToDevice));
-	check_return(cudaMemcpy(A3, A3_tmp, N*sizeof(float), cudaMemcpyHostToDevice));
-	check_return(cudaMemcpy(b, b_tmp, N*sizeof(float), cudaMemcpyHostToDevice));
+	check_return(cudaMemcpy(A1, A1_tmp, S*N*sizeof(float), cudaMemcpyHostToDevice));
+	check_return(cudaMemcpy(A2, A2_tmp, S*N*sizeof(float), cudaMemcpyHostToDevice));
+	check_return(cudaMemcpy(A3, A3_tmp, S*N*sizeof(float), cudaMemcpyHostToDevice));
+	check_return(cudaMemcpy(b, b_tmp, S*N*sizeof(float), cudaMemcpyHostToDevice));
 }
 
 /* Copies reduced matrix A' to host memory A for testing purposes */
 __host__ void PCR::PCR_A_tester(float* A1_tmp, float* A2_tmp, float* A3_tmp,
 	float* b_tmp) {
-	check_return(cudaMemcpy(A1_tmp, A1, N*sizeof(float), cudaMemcpyDeviceToHost));
-	check_return(cudaMemcpy(A2_tmp, A2, N*sizeof(float), cudaMemcpyDeviceToHost));
-	check_return(cudaMemcpy(A3_tmp, A3, N*sizeof(float), cudaMemcpyDeviceToHost));
-	check_return(cudaMemcpy(b_tmp, b, N*sizeof(float), cudaMemcpyDeviceToHost));
+	check_return(cudaMemcpy(A1_tmp, A1, S*N*sizeof(float), cudaMemcpyDeviceToHost));
+	check_return(cudaMemcpy(A2_tmp, A2, S*N*sizeof(float), cudaMemcpyDeviceToHost));
+	check_return(cudaMemcpy(A3_tmp, A3, S*N*sizeof(float), cudaMemcpyDeviceToHost));
+	check_return(cudaMemcpy(b_tmp, b, S*N*sizeof(float), cudaMemcpyDeviceToHost));
 }
 
 /* Global functions */
@@ -177,31 +178,39 @@ int main()
 	cout << "Hello World!" << endl;
 	cout << "This is PCR solver!" << endl;
 
-	int N = 5;
+	int N = 8;
+	int S = 2;
 
-	float A1 [] = {0.0, 3.0, 2.0, 1.0, 6.0};
-	float A2 [] = {1.0, 4.0, -1.0, -2.0, 11};
-	float A3 [] = {7.0, 1.0, 7.0, 5.0, 0.0};
-	float B [] = {1.0, 4.0, -1.0, 7.0, 18.0};
-	float X [] = {0.0, 0.0, 0.0, 0.0, 0.0};
+	float A1 [] = {0.0, 3.0, 2.0, 1.0, 6.0, -7.0, 11.0, -1.0, 0.0, 3.0, 2.0, 1.0, 6.0, -7.0, 11.0, -1.0};
+	float A2 [] = {1.0, 4.0, -1.0, -2.0, 11, -5.0, -2.0, 1.0, 1.0, 4.0, -1.0, -2.0, 11, -5.0, -2.0, 1.0};
+	float A3 [] = {7.0, 1.0, 7.0, 5.0, 0.0, 4.0, -4.0, 8.0, 7.0, 1.0, 7.0, 5.0, 0.0, 4.0, -4.0, 8.0};
+	float B [] = {1.0, 4.0, -1.0, 7.0, 18.0, 11.0, 2.0, -3.0, 1.0, 4.0, -1.0, 7.0, 18.0, 11.0, 2.0, -3.0};
+	float X [] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
 
-	for (int i = 0; i < N; i++) {
-		for (int j = 0; j < N; j++) {
-			if ((i != 0) && (j == i-1)) cout << A1[i] << " ";
-			else if (j == i) cout << A2[i] << " ";
-			else if ((i != N-1) && (j == i+1)) cout << A3[i] << " ";
-			else cout << "0 ";
+	for (int k = 0; k < S; k++) {
+		for (int i = 0; i < N; i++) {
+			for (int j = 0; j < N; j++) {
+				if ((i != 0) && (j == i-1)) cout << A1[i+k*N] << " ";
+				else if (j == i) cout << A2[i+k*N] << " ";
+				else if ((i != N-1) && (j == i+1)) cout << A3[i+k*N] << " ";
+				else cout << "0 ";
+			}
+			cout << endl;
 		}
 		cout << endl;
 	}
 	cout << endl;
 
-	PCR* pcr= new PCR(N);
+	PCR* pcr= new PCR(N, S);
 
 	pcr->PCR_solve(A1, A2, A3, B, X);
 
-	for (int i = 0; i < N; i++) {
-		cout << X[i] << " ";
+	for (int j = 0; j < S; j++) {
+		for (int i = 0; i < N; i++) {
+			cout << X[i+j*N] << " ";
+		}
+
+		cout << endl;
 	}
 	cout << endl;
 

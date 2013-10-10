@@ -25,6 +25,7 @@
 class PCR {
 private:
 	int N;	/* system dimension */
+	int S;
 	float* A1;	/* below diagonal in tridiagonal system A */
 	float* A2;	/* diagonal of tridiagonal system A */
 	float* A3;	/* above diagonal in tridiagonal system A */
@@ -38,7 +39,7 @@ private:
 		float* b_tmp);
 public:
 	/* Constructors */
-	PCR(int N_tmp);
+	PCR(int N_tmp, int S_tmp);
 
 	/* Destructor */
 	virtual ~PCR();
